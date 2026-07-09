@@ -20,13 +20,13 @@ alter table "ActivityLog" enable row level security;
 -- Helper: current user's organization id, derived from the "User" table
 -- (linked 1:1 to auth.users.id via the same primary key).
 create or replace function current_organization_id()
-returns uuid
+returns text
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select "organizationId" from "User" where id = auth.uid()
+  select "organizationId" from "User" where id = auth.uid()::text
 $$;
 
 -- Organization: a user can only see/update their own organization.
