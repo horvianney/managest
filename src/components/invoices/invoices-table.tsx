@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -124,7 +125,11 @@ export function InvoicesTable({
         <tbody className="divide-y divide-border">
           {invoices.map((inv) => (
             <tr key={inv.id} className="hover:bg-secondary/50">
-              <td className="px-4 py-3 font-medium">{inv.invoiceNumber}</td>
+              <td className="px-4 py-3 font-medium">
+                <Link href={`/invoices/${inv.id}`} className="hover:underline">
+                  {inv.invoiceNumber}
+                </Link>
+              </td>
               <td className="px-4 py-3">
                 <Badge variant="outline">{inv.type === "INVOICE" ? "Facture" : "Devis"}</Badge>
               </td>
