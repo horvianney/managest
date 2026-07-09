@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  siret     String?
+  vatNumber String?
+  address   String?
+  city      String?
+  zipCode   String?
+  country   String   @default("France")
+  currency  String   @default("EUR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  customers   Customer[]
+  suppliers   Supplier[]
+  products    Product[]
+  transactions Transaction[]
+  invoices    Invoice[]
+  taxRates    TaxRate[]
+  currencies  Currency[]
+  activityLogs ActivityLog[]
+}
+
+enum UserRole {
+  ADMIN
+  COMPTABLE
+  EMPLOYE
+}
+
+model User {
+  id              String       @id @default(uuid())
+  organizationId  String
+  email           String       @unique
+  firstName       String?
+  lastName        String?
+  role            UserRole     @default(EMPLOYE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Customer {
+  id              String       @id @default(uuid())
+  organizationId  String
+  name            String
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  zipCode         String?
+  country         String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices        Invoice[]
+
+  @@index([organizationId])
+}
+
+model Supplier {
+  id              String       @id @default(uuid())
+  organizationId  String
+  name            String
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  zipCode         String?
+  country         String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Product {
+  id              String          @id @default(uuid())
+  organizationId  String
+  sku             String
+  name            String
+  description     String?
+  purchasePrice   Decimal         @default(0)
+  salePrice       Decimal         @default(0)
+  stockQuantity   Int             @default(0)
+  stockThreshold  Int             @default(10)
+  category        String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stockMovements  StockMovement[]
+  invoiceLines    InvoiceLine[]
+
+  @@unique([organizationId, sku])
+  @@index([organizationId])
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model StockMovement {
+  id              String           @id @default(uuid())
+  productId       String
+  organizationId  String
+  type            StockMovementType
+  quantity        Int
+  reason          String?
+  createdAt       DateTime         @default(now())
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([productId])
+}
+
+enum TransactionType {
+  SALE
+  PURCHASE
+  EXPENSE
+  INCOME
+}
+
+model Transaction {
+  id              String           @id @default(uuid())
+  organizationId  String
+  type            TransactionType
+  description     String
+  amountHT        Decimal
+  taxRate         Decimal          @default(0)
+  amountTTC       Decimal
+  currency        String           @default("EUR")
+  category        String?
+  date            DateTime
+  customerId      String?
+  supplierId      String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([date])
+}
+
+enum InvoiceType {
+  INVOICE
+  QUOTE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id              String         @id @default(uuid())
+  organizationId  String
+  invoiceNumber   String
+  type            InvoiceType
+  status          InvoiceStatus  @default(DRAFT)
+  customerId      String?
+  customerName    String
+  issueDate       DateTime
+  dueDate         DateTime?
+  subtotalHT      Decimal        @default(0)
+  taxAmount       Decimal        @default(0)
+  totalTTC        Decimal        @default(0)
+  currency        String         @default("EUR")
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer        Customer?      @relation(fields: [customerId], references: [id])
+  lines           InvoiceLine[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId])
+}
+
+model InvoiceLine {
+  id              String         @id @default(uuid())
+  invoiceId       String
+  productId       String?
+  description     String
+  quantity        Decimal        @default(1)
+  unitPrice       Decimal        @default(0)
+  taxRate         Decimal        @default(0)
+  lineTotalHT     Decimal        @default(0)
+  lineTotalTTC    Decimal        @default(0)
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product         Product?       @relation(fields: [productId], references: [id])
+
+  @@index([invoiceId])
+}
+
+model TaxRate {
+  id              String       @id @default(uuid())
+  organizationId  String
+  name            String
+  rate            Decimal
+  isDefault       Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Currency {
+  id              String       @id @default(uuid())
+  organizationId  String
+  code            String
+  name            String
+  symbol          String
+  exchangeRate    Decimal      @default(1)
+  isDefault       Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model ActivityLog {
+  id              String       @id @default(uuid())
+  organizationId  String
+  userId          String?
+  action          String
+  entity          String
+  entityId        String?
+  details         String?
+  createdAt       DateTime     @default(now())
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([createdAt])
+}
